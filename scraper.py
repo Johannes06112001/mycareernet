@@ -48,21 +48,36 @@ def get_session(location="India") -> dict:
         def on_request(req):
             if "getAll" in req.url and req.method == "POST":
                 headers = dict(req.headers)
-                token   = headers.get("x-auth-token") or headers.get("X-AUTH-TOKEN", "")
                 body    = req.post_data or "{}"
                 try:
                     payload = json.loads(body)
                 except Exception:
                     payload = {}
 
-                if token:
-                    captured["token"]         = token
-                    captured["payload"]       = payload
-                    captured["extra_headers"] = headers
-                    print(f"[PLAYWRIGHT] ✅ X-AUTH-TOKEN: {token[:40]}...")
-                    print(f"[PLAYWRIGHT]    Payload:      {json.dumps(payload)[:150]}")
-                else:
-                    print(f"[PLAYWRIGHT] ⚠️  Request ohne Token abgefangen, Headers: {list(headers.keys())}")
+                print(f"[PLAYWRIGHT] Request abgefangen, Headers: {list(headers.keys())}")
+                print(f"[PLAYWRIGHT] Payload: {body[:200]}")
+
+                # Auth-Token kann in verschiedenen Headern stecken
+                token = (
+                    headers.get("x-auth-token") or
+                    headers.get("authorization") or
+                    headers.get("x-authorization") or
+                    headers.get("token") or
+                    ""
+                )
+
+                # Alle Custom-Header merken (x-* und app-*)
+                custom = {k: v for k, v in headers.items()
+                          if k.startswith("x-") or k.startswith("app-") or k == "authorization"}
+
+                captured["token"]          = token
+                captured["auth_header"]    = next((k for k in ["x-auth-token","authorization","x-authorization","token"]
+                                                   if k in headers), "authorization")
+                captured["payload"]        = payload
+                captured["custom_headers"] = custom
+
+                print(f"[PLAYWRIGHT] ✅ Auth-Header: '{captured['auth_header']}' = {token[:50]}...")
+                print(f"[PLAYWRIGHT]    Custom-Headers: {custom}")
 
         page.on("request", on_request)
 
@@ -75,9 +90,12 @@ def get_session(location="India") -> dict:
         time.sleep(4)
         browser.close()
 
-    if not captured.get("token"):
-        print("[PLAYWRIGHT] ❌ Kein Token gefunden. Seite möglicherweise geblockt.")
+    if not captured:
+        print("[PLAYWRIGHT] ❌ Kein getAll-Request abgefangen.")
         sys.exit(1)
+
+    if not captured.get("token"):
+        print("[PLAYWRIGHT] ⚠️  Kein Auth-Token — fahre trotzdem fort mit verfügbaren Headers")
 
     captured["captured_at"] = datetime.now().isoformat()
     CACHE_FILE.write_text(json.dumps(captured, indent=2), encoding="utf-8")
@@ -140,34 +158,38 @@ def _parse_exp(s):
 
 
 def fetch_jobs(session: dict, keyword: str, location: str, exp: str, max_pages: int) -> list:
-    token        = session["token"]
+    token        = session.get("token", "")
+    auth_header  = session.get("auth_header", "authorization")
     base_payload = session.get("payload", {"pageNo": 1, "pageSize": 20})
-    extra_hdrs   = session.get("extra_headers", {})
+    custom_hdrs  = session.get("custom_headers", {})
 
-    # Basis-Headers: alles was der Browser mitschickte, plus unsere Overrides
+    # Basis-Headers
     headers = {
-        "User-Agent":      extra_hdrs.get("user-agent", "Mozilla/5.0"),
+        "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/146.0.0.0",
         "Content-Type":    "application/json",
         "Accept":          "application/json, text/plain, */*",
-        "Accept-Language": extra_hdrs.get("accept-language", "de,en-US;q=0.9"),
+        "Accept-Language": "de,en-US;q=0.9,en;q=0.8",
         "Origin":          "https://mycareernet.co",
         "Referer":         f"{PORTAL_BASE}/listings/jobs-in-{location or 'India'}?page=1",
-        "X-AUTH-TOKEN":    token,
         "sec-fetch-dest":  "empty",
         "sec-fetch-mode":  "cors",
         "sec-fetch-site":  "same-origin",
     }
-    # Weitere Custom-Headers aus dem Browser-Request übernehmen
-    for k, v in extra_hdrs.items():
-        if k.lower().startswith("x-") and k.lower() != "x-auth-token":
-            headers[k] = v
+
+    # Alle Custom-Headers aus dem Browser exakt übernehmen (app-name, x-applma, authorization, etc.)
+    headers.update(custom_hdrs)
+
+    # Sicherstellen dass der Auth-Token gesetzt ist
+    if token:
+        headers[auth_header] = token
+
+    print(f"[FETCH] Headers die mitgeschickt werden: {list(headers.keys())}")
+    print(f"[FETCH] Auth via '{auth_header}': {token[:50] if token else 'KEIN TOKEN'}...")
+    print(f"[FETCH] Max {max_pages} Seiten, Keyword='{keyword}', Location='{location}'")
 
     session_r = requests.Session()
     session_r.headers.update(headers)
-
     all_jobs = []
-    print(f"[FETCH] Start — Token: {token[:30]}...")
-    print(f"[FETCH] Max {max_pages} Seiten, Keyword='{keyword}', Location='{location}'")
 
     for page in range(1, max_pages + 1):
         payload = build_payload(base_payload, keyword, location, exp, page)
