@@ -12,15 +12,11 @@ on:
       location:
         description: 'Standort (z.B. India, Hyderabad, Mumbai)'
         required: false
-        default: ''
+        default: 'India'
       exp:
-        description: 'Erfahrung min_max (z.B. 0_5 oder 5_10)'
+        description: 'Erfahrung min_max (z.B. 0_5, 5_10)'
         required: false
         default: ''
-      force_probe:
-        description: 'Payload neu ermitteln (true/false)'
-        required: false
-        default: 'false'
 
 jobs:
   scrape:
@@ -30,27 +26,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Python & Abhängigkeiten
+      - name: Python & Playwright installieren
         run: |
           pip install requests playwright --quiet
           python -m playwright install chromium --with-deps
 
-      - name: Payload-Probe (API-Variante ermitteln)
-        if: ${{ !hashFiles('discovered_payload.json') || github.event.inputs.force_probe == 'true' }}
-        run: |
-          python scraper.py --probe \
-            --keyword "${{ github.event.inputs.keyword || '' }}" \
-            --location "${{ github.event.inputs.location || '' }}" \
-            --exp "${{ github.event.inputs.exp || '' }}"
-
-      - name: Jobs scrapen
+      - name: Scrapen (Playwright holt Token, API liefert Jobs)
         run: |
           python scraper.py \
-            --keyword "${{ github.event.inputs.keyword || '' }}" \
-            --location "${{ github.event.inputs.location || '' }}" \
-            --exp "${{ github.event.inputs.exp || '' }}" \
-            --pages 10 \
-            --output index.html
+            --keyword  "${{ github.event.inputs.keyword  || '' }}" \
+            --location "${{ github.event.inputs.location || 'India' }}" \
+            --exp      "${{ github.event.inputs.exp      || '' }}" \
+            --pages    10 \
+            --output   index.html
 
       - name: Artifacts hochladen
         uses: actions/upload-artifact@v4
@@ -59,15 +47,15 @@ jobs:
           path: |
             index.html
             jobs_raw.json
-            discovered_payload.json
-          retention-days: 30
+            session_cache.json
+          retention-days: 7
 
       - name: Commit & Push
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add discovered_payload.json index.html jobs_raw.json
-          git diff --staged --quiet || git commit -m "bot: MyCareernet Jobs aktualisiert $(date +'%Y-%m-%d %H:%M')"
+          git add index.html jobs_raw.json
+          git diff --staged --quiet || git commit -m "bot: Jobs aktualisiert $(date +'%Y-%m-%d %H:%M')"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
