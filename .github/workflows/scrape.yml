@@ -1,0 +1,50 @@
+name: Scrape & Deploy
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      keyword:
+        description: 'Keyword (z.B. BASF)'
+        default: ''
+      location:
+        description: 'Location (z.B. India, Hyderabad)'
+        default: ''
+      exp:
+        description: 'Experience (z.B. 0_5 oder 5_10)'
+        default: ''
+
+jobs:
+  scrape:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependencies installieren
+        run: pip install requests playwright --quiet
+        shell: pwsh
+
+      - name: Chromium installieren
+        run: python -m playwright install chromium --with-deps
+        shell: pwsh
+
+      - name: Scrape (Probe + Fetch + HTML)
+        run: |
+          python scraper.py `
+            --probe `
+            --keyword "${{ github.event.inputs.keyword || '' }}" `
+            --location "${{ github.event.inputs.location || '' }}" `
+            --exp "${{ github.event.inputs.exp || '' }}" `
+            --pages 10 `
+            --output docs/index.html
+        shell: pwsh
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages
