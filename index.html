@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyCareernet Jobs – BASF</title>
+<style>
+  :root {
+    --bg:         #0d0f14;
+    --bg2:        #161920;
+    --bg3:        #1e2129;
+    --border:     #2a2d38;
+    --accent:     #0ea5e9;
+    --accent2:    #38bdf8;
+    --text:       #e2e8f0;
+    --text-muted: #64748b;
+    --success:    #10b981;
+    --tag-bg:     #1e3a4a;
+    --tag-text:   #7dd3fc;
+    --radius:     12px;
+    --font:       'DM Sans', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 50%, #091420 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 40px 24px 32px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(14,165,233,.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .logo-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  h1 {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: #fff;
+  }
+  h1 span { color: var(--accent2); }
+
+  .header-sub {
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: .9rem;
+  }
+
+  /* ── Filter-Tags ── */
+  .filters-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .filter-tag {
+    background: rgba(14,165,233,.15);
+    border: 1px solid rgba(14,165,233,.3);
+    color: var(--accent2);
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: .82rem;
+    font-weight: 500;
+  }
+
+  /* ── Stats Bar ── */
+  .stats-bar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: .85rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  .stat { display: flex; align-items: center; gap: 6px; }
+  .stat strong { color: var(--text); font-weight: 600; }
+
+  /* ── Layout ── */
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
+
+  /* ── Job Card ── */
+  .job-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    margin-bottom: 14px;
+    transition: border-color .2s, transform .15s, box-shadow .2s;
+    position: relative;
+  }
+  .job-card:hover {
+    border-color: rgba(14,165,233,.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  }
+  .job-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .job-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.35;
+    margin-bottom: 4px;
+  }
+  .job-company {
+    font-size: .85rem;
+    color: var(--accent2);
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+  .job-location {
+    font-size: .82rem;
+    color: var(--text-muted);
+  }
+  .date-badge {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: .75rem;
+    padding: 3px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Meta-Row ── */
+  .job-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .meta-item {
+    font-size: .78rem;
+    color: var(--text-muted);
+    background: var(--bg3);
+    padding: 2px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── Description ── */
+  .job-desc {
+    font-size: .85rem;
+    color: #94a3b8;
+    line-height: 1.55;
+    margin-bottom: 10px;
+  }
+
+  /* ── Skills ── */
+  .skills-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .skill-tag {
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    font-size: .75rem;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(56,189,248,.15);
+  }
+
+  /* ── Footer ── */
+  .card-footer { display: flex; justify-content: flex-end; }
+  .apply-btn {
+    background: linear-gradient(135deg, var(--accent), #0284c7);
+    color: #fff;
+    text-decoration: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: .83rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    transition: opacity .2s, transform .15s;
+  }
+  .apply-btn:hover { opacity: .85; transform: translateY(-1px); }
+
+  /* ── Empty State ── */
+  .empty { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+  .empty .emoji { font-size: 3rem; margin-bottom: 12px; }
+
+  /* ── Footer ── */
+  .page-footer {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-muted);
+    font-size: .78rem;
+    border-top: 1px solid var(--border);
+  }
+  .page-footer a { color: var(--accent2); text-decoration: none; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-row">
+    <div class="logo-dot"></div>
+    <span style="font-size:.8rem;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase">MyCareernet</span>
+  </div>
+  <h1>Jobs in <span>India</span></h1>
+  <p class="header-sub">Automatisch gescrapt · Letzte Aktualisierung: 17.04.2026 07:43</p>
+  <div class="filters-row"><span class="filter-tag">🔍 BASF</span><span class="filter-tag">📍 India</span></div>
+</header>
+
+<div class="stats-bar">
+  <div class="stat">📋 <strong>3</strong> Jobs geladen</div>
+  <div class="stat">🕒 Stand: <strong>17.04.2026 07:43</strong></div>
+  <div class="stat" style="margin-left:auto">
+    <a href="https://mycareernet.co/mycareernet/jobs" target="_blank"
+       style="color:var(--accent2);text-decoration:none;font-size:.82rem">
+      Quelle: mycareernet.co ↗
+    </a>
+  </div>
+</div>
+
+<main class="container">
+  
+        <article class="job-card">
+            <div class="job-card-header">
+                <div class="job-info">
+                    <h2 class="job-title">Senior Data Engineer</h2>
+                    <div class="job-company">BASF India Ltd.</div>
+                    <div class="job-location">📍 Mumbai, India</div>
+                </div>
+                <div class="date-badge">15. Apr 2026</div>
+            </div>
+            <div class="job-meta"><span class="meta-item">⚡ 5-8 years</span><span class="meta-item">🏷 Full Time</span><span class="meta-item">💰 ₹20-30 LPA</span><span class="meta-item">📂 Data Engineering</span></div>
+            <p class="job-desc">We are looking for a Senior Data Engineer to join our team in Mumbai. You will be responsible for building scalable data pipelines and working with cross-functional teams.</p>
+            <div class="skills-row"><span class="skill-tag">Python</span><span class="skill-tag">Spark</span><span class="skill-tag">AWS</span><span class="skill-tag">SQL</span><span class="skill-tag">Airflow</span></div>
+            <div class="card-footer">
+                <a href="https://mycareernet.co/apply/12345" target="_blank" class="apply-btn">
+                    Jetzt bewerben →
+                </a>
+            </div>
+        </article>
+
+        <article class="job-card">
+            <div class="job-card-header">
+                <div class="job-info">
+                    <h2 class="job-title">Process Engineer</h2>
+                    <div class="job-company">BASF SE</div>
+                    <div class="job-location">📍 Chennai, Tamil Nadu</div>
+                </div>
+                <div class="date-badge">14. Apr 2026</div>
+            </div>
+            <div class="job-meta"><span class="meta-item">⚡ 3-5 years</span><span class="meta-item">🏷 Permanent</span></div>
+            <p class="job-desc">Optimize chemical production processes at our manufacturing facility.</p>
+            <div class="skills-row"><span class="skill-tag">Chemical Engineering</span><span class="skill-tag">Process Optimization</span><span class="skill-tag">SAP</span></div>
+            <div class="card-footer">
+                <a href="https://mycareernet.co/apply/12346" target="_blank" class="apply-btn">
+                    Jetzt bewerben →
+                </a>
+            </div>
+        </article>
+
+        <article class="job-card">
+            <div class="job-card-header">
+                <div class="job-info">
+                    <h2 class="job-title">HR Business Partner</h2>
+                    <div class="job-company">Careernet</div>
+                    <div class="job-location">📍 Bangalore</div>
+                </div>
+                
+            </div>
+            <div class="job-meta"><span class="meta-item">⚡ 2-4 years</span><span class="meta-item">💰 ₹8-12 LPA</span></div>
+            <p class="job-desc">Partner with business leaders to drive HR strategies.</p>
+            
+            <div class="card-footer">
+                <a href="https://mycareernet.co/apply/12347" target="_blank" class="apply-btn">
+                    Jetzt bewerben →
+                </a>
+            </div>
+        </article>
+
+</main>
+
+<footer class="page-footer">
+  Generiert von <a href="https://mycareernet.co/mycareernet/jobs" target="_blank">MyCareernet Scraper</a>
+  &nbsp;·&nbsp; 17.04.2026 07:43
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,73 @@
+name: MyCareernet Job Scraper
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # Täglich 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      keyword:
+        description: 'Such-Keyword (z.B. BASF)'
+        required: false
+        default: ''
+      location:
+        description: 'Standort (z.B. India)'
+        required: false
+        default: ''
+
+jobs:
+  scrape:
+    runs-on: windows-latest   # Dein Self-Hosted Runner falls WAF ein Problem macht
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Abhängigkeiten installieren
+        run: |
+          pip install requests playwright
+          python -m playwright install chromium --with-deps
+
+      - name: Payload entdecken (erster Lauf)
+        if: ${{ !hashFiles('discovered_payload.json') }}
+        run: |
+          python scraper.py --discover \
+            --keyword "${{ github.event.inputs.keyword || '' }}" \
+            --location "${{ github.event.inputs.location || '' }}"
+
+      - name: Jobs scrapen
+        run: |
+          python scraper.py \
+            --keyword "${{ github.event.inputs.keyword || '' }}" \
+            --location "${{ github.event.inputs.location || '' }}" \
+            --pages 10 \
+            --output index.html
+
+      - name: Rohdaten als Artifact speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: jobs-raw-json
+          path: jobs_raw.json
+          retention-days: 7
+
+      - name: Payload-Cache commiten
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add discovered_payload.json index.html jobs_raw.json || true
+          git diff --staged --quiet || git commit -m "🤖 Jobs aktualisiert $(date +'%Y-%m-%d %H:%M')"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy zu GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          include_files: index.html
