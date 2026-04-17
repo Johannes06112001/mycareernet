@@ -2,7 +2,7 @@ name: MyCareernet Job Scraper
 
 on:
   schedule:
-    - cron: '0 6 * * *'   # Täglich 06:00 UTC
+    - cron: '0 6 * * *'     # Täglich 06:00 UTC
   workflow_dispatch:
     inputs:
       keyword:
@@ -10,60 +10,77 @@ on:
         required: false
         default: ''
       location:
-        description: 'Standort (z.B. India)'
+        description: 'Standort (z.B. India, Hyderabad, Mumbai)'
         required: false
         default: ''
+      exp:
+        description: 'Erfahrung min_max (z.B. 0_5 oder 5_10)'
+        required: false
+        default: ''
+      force_probe:
+        description: 'Payload neu ermitteln (true/false)'
+        required: false
+        default: 'false'
 
 jobs:
   scrape:
-    runs-on: windows-latest   # Dein Self-Hosted Runner falls WAF ein Problem macht
+    runs-on: self-hosted   # Dein Windows Runner umgeht die WAF
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Abhängigkeiten installieren
+      - name: Python & Abhängigkeiten
         run: |
-          pip install requests playwright
+          pip install requests playwright --quiet
           python -m playwright install chromium --with-deps
+        shell: pwsh
 
-      - name: Payload entdecken (erster Lauf)
-        if: ${{ !hashFiles('discovered_payload.json') }}
+      # ── Schritt 1: Payload ermitteln (nur wenn kein Cache oder force_probe) ──
+      - name: Payload-Probe (API-Variante ermitteln)
+        if: ${{ !hashFiles('discovered_payload.json') || github.event.inputs.force_probe == 'true' }}
         run: |
-          python scraper.py --discover \
-            --keyword "${{ github.event.inputs.keyword || '' }}" \
-            --location "${{ github.event.inputs.location || '' }}"
+          python scraper.py --probe `
+            --keyword "${{ github.event.inputs.keyword || '' }}" `
+            --location "${{ github.event.inputs.location || '' }}" `
+            --exp "${{ github.event.inputs.exp || '' }}"
+        shell: pwsh
 
-      - name: Jobs scrapen
+      # ── Schritt 2: Jobs scrapen ───────────────────────────────────────────
+      - name: Jobs scrapen → index.html
         run: |
-          python scraper.py \
-            --keyword "${{ github.event.inputs.keyword || '' }}" \
-            --location "${{ github.event.inputs.location || '' }}" \
-            --pages 10 \
+          python scraper.py `
+            --keyword "${{ github.event.inputs.keyword || '' }}" `
+            --location "${{ github.event.inputs.location || '' }}" `
+            --exp "${{ github.event.inputs.exp || '' }}" `
+            --pages 10 `
             --output index.html
+        shell: pwsh
 
-      - name: Rohdaten als Artifact speichern
+      # ── Schritt 3: Ergebnisse als Artifact speichern ─────────────────────
+      - name: Artifacts hochladen
         uses: actions/upload-artifact@v4
         with:
-          name: jobs-raw-json
-          path: jobs_raw.json
-          retention-days: 7
+          name: mycareernet-results
+          path: |
+            index.html
+            jobs_raw.json
+            discovered_payload.json
+          retention-days: 30
 
-      - name: Payload-Cache commiten
+      # ── Schritt 4: Payload-Cache + HTML ins Repo committen ───────────────
+      - name: Commit & Push
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add discovered_payload.json index.html jobs_raw.json || true
-          git diff --staged --quiet || git commit -m "🤖 Jobs aktualisiert $(date +'%Y-%m-%d %H:%M')"
+          git add discovered_payload.json index.html jobs_raw.json
+          git diff --staged --quiet || git commit -m "bot: MyCareernet Jobs aktualisiert $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
           git push
+        shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # ── Schritt 5: Deploy zu GitHub Pages ────────────────────────────────
       - name: Deploy zu GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
