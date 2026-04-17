@@ -1,4 +1,4 @@
-name: Scrape & Deploy
+name: MyCareernet Job Scraper
 
 on:
   schedule:
@@ -6,45 +6,76 @@ on:
   workflow_dispatch:
     inputs:
       keyword:
-        description: 'Keyword (z.B. BASF)'
+        description: 'Such-Keyword (z.B. BASF)'
+        required: false
         default: ''
       location:
-        description: 'Location (z.B. India, Hyderabad)'
+        description: 'Standort (z.B. India, Hyderabad, Mumbai)'
+        required: false
         default: ''
       exp:
-        description: 'Experience (z.B. 0_5 oder 5_10)'
+        description: 'Erfahrung min_max (z.B. 0_5 oder 5_10)'
+        required: false
         default: ''
+      force_probe:
+        description: 'Payload neu ermitteln (true/false)'
+        required: false
+        default: 'false'
 
 jobs:
   scrape:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Dependencies installieren
-        run: pip install requests playwright --quiet
-        shell: pwsh
-
-      - name: Chromium installieren
-        run: python -m playwright install chromium --with-deps
-        shell: pwsh
-
-      - name: Scrape (Probe + Fetch + HTML)
+      - name: Python & Abhängigkeiten
         run: |
-          python scraper.py `
-            --probe `
-            --keyword "${{ github.event.inputs.keyword || '' }}" `
-            --location "${{ github.event.inputs.location || '' }}" `
-            --exp "${{ github.event.inputs.exp || '' }}" `
-            --pages 10 `
-            --output docs/index.html
-        shell: pwsh
+          pip install requests playwright --quiet
+          python -m playwright install chromium --with-deps
 
-      - name: Deploy to GitHub Pages
+      - name: Payload-Probe (API-Variante ermitteln)
+        if: ${{ !hashFiles('discovered_payload.json') || github.event.inputs.force_probe == 'true' }}
+        run: |
+          python scraper.py --probe \
+            --keyword "${{ github.event.inputs.keyword || '' }}" \
+            --location "${{ github.event.inputs.location || '' }}" \
+            --exp "${{ github.event.inputs.exp || '' }}"
+
+      - name: Jobs scrapen
+        run: |
+          python scraper.py \
+            --keyword "${{ github.event.inputs.keyword || '' }}" \
+            --location "${{ github.event.inputs.location || '' }}" \
+            --exp "${{ github.event.inputs.exp || '' }}" \
+            --pages 10 \
+            --output index.html
+
+      - name: Artifacts hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: mycareernet-results
+          path: |
+            index.html
+            jobs_raw.json
+            discovered_payload.json
+          retention-days: 30
+
+      - name: Commit & Push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add discovered_payload.json index.html jobs_raw.json
+          git diff --staged --quiet || git commit -m "bot: MyCareernet Jobs aktualisiert $(date +'%Y-%m-%d %H:%M')"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy zu GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
+          publish_dir: .
           publish_branch: gh-pages
+          include_files: index.html
